@@ -1,9 +1,15 @@
 "use client"
+import axios from 'axios';
+import Image from 'next/image';
 import React, { useState } from 'react';
 
 const FileUpload = () => {
     const [dragging, setDragging] = useState(false);
     const [uploadedFile, setUploadedFile] = useState(null);
+    const [file, setFile] = useState({});
+    const [resultURL, setResultURL] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [errors, setErrors] = useState([]);
 
     const handleDragEnter = (e) => {
         e.preventDefault();
@@ -20,11 +26,14 @@ const FileUpload = () => {
         setDragging(false);
 
         const file = e.dataTransfer.files[0]; // Only handle the first file
+        setDragging(file);
         handleFile(file);
+
     };
 
     const handleFileInputChange = (e) => {
         const file = e.target.files[0]; // Only handle the first file
+        setFile(file);
         handleFile(file);
     };
 
@@ -39,10 +48,36 @@ const FileUpload = () => {
         }
     };
 
+    const handleRemove = () => {
+        const id = setInterval(() => setLoading(!loading), 1000);
+        const formData = new FormData();
+        formData.append('size', 'auto');
+        formData.append('image_file', file, file?.name);
+        axios.post("/api/remove", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+            responseType: 'arraybuffer'
+        }).then(res => {
+            if (res.status == 200) {
+                const blob = new Blob([res.data], { type: 'image/png' });
+                const imageUrl = URL.createObjectURL(blob);
+                console.log(imageUrl)
+                setResultURL(imageUrl);
+                setUploadedFile(null)
+                clearInterval(id);
+            }
+        }).catch(err => {
+            const msg = JSON.parse(String.fromCharCode.apply(null, new Uint8Array(err.response.data)))
+            setErrors(msg.errors);
+            setLoading(false);
+        })
+    }
+
     return (
-        <div>
-            {!uploadedFile && <div
-                className={`w-[70vw] h-64 border-2 border-dashed border-gray-400 rounded-lg flex flex-col justify-center  ${dragging ? 'bg-gray-200' : ''}`}
+        <div className='w-full flex gap-2 justify-around'>
+            {(!uploadedFile && !resultURL) && <div
+                className={`w-[100%] h-64 border-2 border-dashed border-gray-400 rounded-lg flex flex-col justify-center  ${dragging ? 'bg-gray-200' : ''}`}
                 onDragOver={(e) => e.preventDefault()}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
@@ -82,10 +117,29 @@ const FileUpload = () => {
 
             </div>}
             {uploadedFile && typeof uploadedFile === 'string' && (
-                <div className="text-center">
-                    <img src={uploadedFile} alt="Uploaded" className="max-[50%]" />
+                <div className={`text-center relative w-[70%] ${loading ? 'loading' : ''}`}>
+                    <img src={uploadedFile} alt="Uploaded" className={`max-[100%]`} />
                 </div>
             )}
+            {
+                resultURL && <div className='relative w-[70%]'>
+                    <img src={resultURL} alt="Uploaded" className="max-[100%]" />
+                </div>
+            }
+            {(resultURL || uploadedFile) && <div className='w-[40%] px-4 py-2 flex flex-col gap-5 text-center'>
+                {
+                    errors.map((error, key) => <div key={key} className='p-3 rounded tracking-wide bg-black text-sm text-white'>{error.title}</div>)
+                }
+                {
+                    resultURL && <a href={resultURL} download={'remove.png'} className='px-4 py-2 text-center rounded w-[100%] bg-slate-950 text-white'>DOWNLOAD</a>
+                }
+                {
+                    (uploadedFile && errors.length == 0) && <button onClick={() => handleRemove()} className='bg-red-300 px-4 py-2 text-center rounded w-[100%]'>Remove BG</button>
+                }
+                {
+                    (errors.length > 0) && <button onClick={() => setUploadedFile(null)} className='px-4 py-2 text-center rounded w-[100%] border'>Upload Again</button>
+                }
+            </div>}
         </div>
     );
 };
