@@ -137,7 +137,7 @@ const FileUpload = () => {
                     (uploadedFile && errors.length == 0) && <button onClick={() => handleRemove()} className='bg-red-300 px-4 py-2 text-center rounded w-[100%]'>Remove BG</button>
                 }
                 {
-                    (errors.length > 0) && <button onClick={() => setUploadedFile(null)} className='px-4 py-2 text-center rounded w-[100%] border'>Upload Again</button>
+                    (errors.length > 0) && <button onClick={() => { setUploadedFile(null), setLoading(false), setErrors([]) }} className='px-4 py-2 text-center rounded w-[100%] border'>Upload Again</button>
                 }
             </div>}
         </div>
